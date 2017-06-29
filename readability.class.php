@@ -1,4 +1,9 @@
 <?php
+/*
+**The regular expression below were not created by me, they were provided for this project. These syllable exceptions may be
+**incomplete
+*/
+
 class Readability {
 
 	private $writing_sample;
@@ -10,7 +15,7 @@ class Readability {
 	public $asl = 0;
 	public $asw = 0;
 
-	// exceptions to the one syllabul to one vowel rule
+	// These patterns would be normally counted as two syllables but SHOULD be one syllable. May be incomplete; do not modify.
 	private $substract_syllable_patterns = [
 		"cia(l|$)",
 		"tia",
@@ -33,6 +38,7 @@ class Readability {
 		"^busi$"
 	];
 
+	// These patterns might be counted as one syllable according to $subtract_syllable_patterns and the base rules but SHOULD be two syllables. May be incomplete; do not modify.
 	private $add_syllable_patterns = [
 		"([^s]|^)ia",
 		"iu",
@@ -66,6 +72,7 @@ class Readability {
 		"uen"
 	];
 
+	// Single syllable prefixes and suffixes. May be incomplete; do not modify.
 	private $prefix_and_suffix_patterns = [
 		"^un",
 		"^fore",
@@ -95,6 +102,7 @@ class Readability {
 		"tion(ed)?$"
 	];
 
+	// Specific common exceptions that don't follow the rule set below are handled individually. The correct syllable count is the value. May be incomplete; do not modify.
 	private $problem_words = [
 		'abalone' => 4,
 		'abare' => 3,
@@ -156,24 +164,19 @@ class Readability {
 	}
 
 	public function count_sentences () {
-		$sentences[] = preg_split('/[.!:;]/', $this->writing_sample, null, PREG_SPLIT_NO_EMPTY);
+		$sentences = preg_split('/[.!:;]/', $this->writing_sample, null, PREG_SPLIT_NO_EMPTY);
 		foreach ($sentences as $sentence) {
-			foreach ($sentence as $idx) {
-				$this->sentence_count ++;
-			}
+			$this->sentence_count ++;
 		}
 		return $this->sentence_count;
 	}
 
 	public function count_words () {
-		$raw_words[] = preg_split('/ /', $this->writing_sample, null, PREG_SPLIT_NO_EMPTY);
-
+		$raw_words = preg_split('/ /', $this->writing_sample, null, PREG_SPLIT_NO_EMPTY);
 		foreach ($raw_words as $word) {
-			foreach ($word as $idx) {
 				$this->word_count ++;
 				//while we are in here lets create an array of words for syllable calculations
-				$this->words[] = $idx;
-			}
+				$this->words[] = $word;
 		}
 		return $this->word_count;
 	}
@@ -182,48 +185,46 @@ class Readability {
 		if (empty($this->words)) $this->word_count();
 
 		foreach ($this->words as $idx => $word) {
-			// These patterns would be normally counted as two syllables but SHOULD be one syllable. May be incomplete; do not modify.
-			foreach ($this->substract_syllable_patterns as $regex) {
-				if (preg_match_all('/'.$regex.'/', $word, $syllables[])) {
-					unset($this->words[$idx]);
+
+			foreach ($this->substract_syllable_patterns as $sub_syll_regex) {
+				if (preg_match_all('/'.$sub_syll_regex.'/', $word, $syllables[])) {
+					$this->syllable_count -= 1;
+				}
+			}
+			unset($sub_syll_regex);
+
+			foreach ($this->add_syllable_patterns as $add_syll_regex) {
+				if (preg_match_all('/'.$add_syll_regex.'/', $word, $syllables[])) {
 					$this->syllable_count ++;
 				}
 			}
-			unset($regex);
-			// These patterns might be counted as one syllable according to $subtract_syllable_patterns and the base rules but SHOULD be two syllables. May be incomplete; do not modify.
-			foreach ($this->add_syllable_patterns as $regex) {
-				if (preg_match_all('/'.$regex.'/', $word, $syllables[])) {
-					unset($this->words[$idx]);
-					$this->syllable_count += 2;
-				}
-			}
-			unset($regex);
+			unset($add_syll_regex);
 
-			// Single syllable prefixes and suffixes. May be incomplete; do not modify.
-			foreach ($this->prefix_and_suffix_patterns as $regex) {
-				if (preg_match_all('/'.$regex.'/', $word, $syllables[])) {
+			foreach ($this->prefix_and_suffix_patterns as $prefix_and_suffix_regex) {
+				if (preg_match_all('/'.$prefix_and_suffix_regex.'/', $word, $syllables[])) {
 					$this->syllable_count ++;
 					unset($this->words[$idx]);
 				}
 			}
-			unset($regex);
+			unset($prefix_and_suffix_regex);
 
-			// Specific common exceptions that don't follow the rule set below are handled individually. The correct syllable count is the value. May be incomplete; do not modify.
-			foreach ($this->problem_words as $problem_word) {
+			foreach ($this->problem_words as $problem_word => $syll_count) {
 				if ($word == $problem_word) {
+					$this->syllable_count += $syll_count;
 					unset($this->words[$idx]);
-					$this->syllable_count += $idx;
 				}
 			}
-			unset($problem_word);
+			unset($problem_word, $syll_count);
+
 		}
 		unset($word);
 
-		//loop through the new words array
+		//loop through the remainder of the words array
 		foreach ($this->words as $word) {
 			$this->syllable_count += preg_match_all('/[aeiouy]/', $word, $syllables[]);
 		}
 		unset($word);
+
 		return $this->syllable_count;
 	}
 
