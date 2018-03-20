@@ -1,2 +1,2 @@
-# reading-ease-tool
-A test I took on Up Work that accepts a string and parses it determining how difficult it is to read.
+# Reading Ease Tool
+A program that excepts a string and determines the reading difficulty
